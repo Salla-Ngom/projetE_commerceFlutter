@@ -6,59 +6,109 @@ import 'package:e_commerce/view/profil.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import'../services/service_admin/cubic.dart';
 
-class PageAdmin extends StatefulWidget {
+class PageAdmin extends StatelessWidget {
   final String id;
   final String nom;
   final String prenom;
   final String email;
   final String telephone;
   final String adresse;
-  const PageAdmin(
-      {super.key,
-      required this.id,
-      required this.nom,
-      required this.prenom,
-      required this.email,
-      required this.telephone,
-      required this.adresse});
+
+  const PageAdmin({
+    super.key,
+    required this.id,
+    required this.nom,
+    required this.prenom,
+    required this.email,
+    required this.telephone,
+    required this.adresse,
+  });
+
   @override
-  State<PageAdmin> createState() => _PageAdminState();
-}
+  Widget build(BuildContext context) {
+    // Liste des pages pour la navigation
+    final List<Widget> pages = [
+      const HomePage(),
+      const CommandesPage(),
+      const ProduitsPage(),
+      const UsersPage(),
+    ];
 
-class _PageAdminState extends State<PageAdmin> {
-  int _selectedIndex = 0;
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    return BlocProvider(
+      create: (context) => NavigationCubit(), // Fournir le NavigationCubit
+      child: BlocBuilder<NavigationCubit, int>(
+        builder: (context, selectedIndex) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: Text(
+                      '${prenom.isNotEmpty ? prenom[0].toUpperCase() : ''}${nom.isNotEmpty ? nom[0].toUpperCase() : ''}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        prenom,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        nom,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.blueAccent,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    _afficherMenuBurger(context, id, nom, prenom, email, telephone, adresse);
+                  },
+                ),
+              ],
+            ),
+            body: pages[selectedIndex], // Afficher la page sélectionnée
+            bottomNavigationBar: BottomNavigationBar(
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
+                BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Commandes'),
+                BottomNavigationBarItem(icon: Icon(Icons.shopping_bag), label: 'Produits'),
+                BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Utilisateurs'),
+              ],
+              currentIndex: selectedIndex,
+              selectedItemColor: Colors.blueAccent,
+              unselectedItemColor: Colors.grey,
+              onTap: (index) {
+                context.read<NavigationCubit>().navigateTo(index); // Mise à jour via Cubit
+              },
+            ),
+          );
+        },
+      ),
+    );
   }
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const CommandesPage(),
-    const ProduitsPage(),
-    const UsersPage(),
-  ];
-  Future<void> _deconnecterUtilisateur() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la déconnexion : $e')),
-        );
-      }
-    }
-  }
-
-  void _afficherMenuBurger(BuildContext context) {
+  void _afficherMenuBurger(
+    BuildContext context,
+    String id,
+    String nom,
+    String prenom,
+    String email,
+    String telephone,
+    String adresse,
+  ) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -68,22 +118,19 @@ class _PageAdminState extends State<PageAdmin> {
               leading: const Icon(Icons.person),
               title: const Text('Mon profil'),
               onTap: () {
-                Navigator.pop(context); 
+                Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => ProfilPage(
-                            id: widget.id, 
-                            nom: widget.nom, 
-                            prenom: widget
-                                .prenom, 
-                            email:
-                                widget.email, 
-                            telephone: widget
-                                .telephone, 
-                            adresse: widget
-                                .adresse, 
-                          )), 
+                    builder: (context) => ProfilPage(
+                      id: id,
+                      nom: nom,
+                      prenom: prenom,
+                      email: email,
+                      telephone: telephone,
+                      adresse: adresse,
+                    ),
+                  ),
                 );
               },
             ),
@@ -91,8 +138,8 @@ class _PageAdminState extends State<PageAdmin> {
               leading: const Icon(Icons.logout),
               title: const Text('Déconnexion'),
               onTap: () {
-                Navigator.pop(context); 
-                _deconnecterUtilisateur(); 
+                Navigator.pop(context);
+                _deconnecterUtilisateur(context);
               },
             ),
           ],
@@ -101,70 +148,25 @@ class _PageAdminState extends State<PageAdmin> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    String firstLetterOfNom = widget.nom.isNotEmpty
-        ? widget.nom[0].toUpperCase()
-        : ''; 
-    String firstLetterOfPrenom =
-        widget.prenom.isNotEmpty ? widget.prenom[0].toUpperCase() : '';
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: Colors.blue,
-              child: Text(
-                '$firstLetterOfPrenom$firstLetterOfNom', 
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            const SizedBox(width: 10),
-           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.prenom, 
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 7,),
-              Text(
-                widget.nom, 
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ],
-             ),
-          ],
-        ),
-        backgroundColor: Colors.blueAccent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu), 
-            onPressed: () {
-              _afficherMenuBurger(context);
-            },
-          ),
-        ],
-      ),
-      body: _pages[_selectedIndex], 
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.list_alt), label: 'Commandes'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_bag), label: 'Produits'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.people), label: 'Utilisateurs'),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-      ),
-    );
+  Future<void> _deconnecterUtilisateur(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoginPage()),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la déconnexion : $e')),
+        );
+      }
+    }
   }
 }
+
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -337,16 +339,6 @@ class UsersPage extends StatelessWidget {
                   ),
                 );
               }),
-              const SizedBox(height: 20),
-              const Text(
-                'Admins',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent,
-                ),
-              ),
-              const SizedBox(height: 10),
             ],
           ),
         );

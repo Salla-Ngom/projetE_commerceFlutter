@@ -140,14 +140,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: const Text('Compte Client'),
               ),
               const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () => setState(() => _isClient = false),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      !_isClient ? Colors.blue[800] : Colors.grey[300],
-                ),
-                child: const Text('Compte Vendeur'),
-              ),
             ],
           ),
           const SizedBox(height: 20),

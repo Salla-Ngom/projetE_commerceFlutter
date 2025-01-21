@@ -1,64 +1,33 @@
-import 'package:e_commerce/view/product.dart';
+// home.dart
+import 'package:e_commerce/view/page_connexion.dart';
 import 'package:flutter/material.dart';
-import 'page_connexion.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../services/services_produits/product_bloc.dart';
+import '../services/services_produits/product_event.dart';
+import '../services/services_produits/product_state.dart';
+import 'product.dart';
 
-class Home extends StatefulWidget {
+class Home extends StatelessWidget {
   const Home({super.key});
 
   @override
-  State<Home> createState() => _HomeState();
+   Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => ProductBloc()..add(ProductLoadRequested()),
+      child: const ProductListPage(),
+    );
+  }
 }
 
-class _HomeState extends State<Home> {
-  List<Product> _products = [];
-  List<Product> _filteredProducts = [];
-  bool _isLoading = true;
-  String _searchQuery = "";
+class ProductListPage extends StatefulWidget {
+  const ProductListPage({super.key});
 
   @override
-  void initState() {
-    super.initState();
-    _fetchProducts();
-  }
+  State<ProductListPage> createState() => _ProductListPageState();
+}
 
-  Future<void> _fetchProducts() async {
-    try {
-      final response =
-          await http.get(Uri.parse('https://fakestoreapi.com/products'));
-
-      if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
-        setState(() {
-          _products = data.map((json) => Product.fromJson(json)).toList();
-          _filteredProducts = _products;
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load products');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e')),
-        );
-      }
-    }
-  }
-
-  void _filterProducts(String query) {
-    setState(() {
-      _searchQuery = query;
-      _filteredProducts = _products
-          .where((product) =>
-              product.title.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
+class _ProductListPageState extends State<ProductListPage> {
+  String _searchQuery = "";
 
   @override
   Widget build(BuildContext context) {
@@ -93,31 +62,55 @@ class _HomeState extends State<Home> {
                 filled: true,
                 fillColor: Colors.white,
               ),
-              onChanged: _filterProducts,
+              onChanged: (query) {
+                setState(() {
+                  _searchQuery = query;
+                });
+                context.read<ProductBloc>().add(ProductSearchRequested(query));
+              },
             ),
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _filteredProducts.isEmpty
-              ? const Center(child: Text('Aucun produit trouvé'))
-              : GridView.builder(
-                  padding: const EdgeInsets.all(10),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                  ),
-                  itemCount: _filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    return _buildProductCard(_filteredProducts[index]);
-                  },
-                ),
+      body: BlocConsumer<ProductBloc, ProductState>(
+        listener: (context, state) {
+          if (state is ProductError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state is ProductLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is ProductLoaded) {
+            final products = _searchQuery.isEmpty
+                ? state.products
+                : (state as ProductSearchResult).filteredProducts;
+
+            return GridView.builder(
+              padding: const EdgeInsets.all(10),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                return _buildProductCard(products[index]);
+              },
+            );
+          }
+
+          return const Center(child: Text('Aucun produit trouvé'));
+        },
+      ),
     );
   }
 
-  static Widget _buildProductCard(Product product) {
+  Widget _buildProductCard(Product product) {
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,7 +133,7 @@ class _HomeState extends State<Home> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text('\$${product.price}',
+            child: Text('\$${product.price * 500}',
                 style: const TextStyle(color: Colors.green)),
           ),
         ],

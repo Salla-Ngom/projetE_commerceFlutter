@@ -1,27 +1,26 @@
 import 'package:flutter/material.dart';
 import 'view/home.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-const firebaseConfig = FirebaseOptions(
-      apiKey: "AIzaSyCX1vurbIT0fNku7Xyv6YmGUx2SW1OkvXs",
-      authDomain: "e-commerce-delmontero.firebaseapp.com",
-      projectId: "e-commerce-delmontero",
-      storageBucket: "e-commerce-delmontero.firebasestorage.app",
-      messagingSenderId: "588642871945",
-      appId: "1:588642871945:web:ce6c19325bfe2f28ccf458",
-      measurementId: "G-EPV29JBYWE"
-);
-
-void main()   async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await dotenv.load();
+
   await Firebase.initializeApp(
-    options: firebaseConfig,
+    options: FirebaseOptions(
+      apiKey: dotenv.env['FIREBASE_API_KEY']!,
+      authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
+      projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+      storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
+      messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+      appId: dotenv.env['FIREBASE_APP_ID']!,
+      measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']!,
+    ),
   );
 
   runApp(const MyApp());
 }
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

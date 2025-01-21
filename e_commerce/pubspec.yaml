@@ -42,9 +42,11 @@ dependencies:
   uuid: ^3.0.7
   intl: ^0.18.0
   firebase_storage: ^11.0.4
-  flutter_stripe: ^4.0.0 
-  flutter_dotenv: ^5.0.2
-http: ^0.12.5
+  flutter_dotenv: ^5.0.0
+  http: ^1.2.2
+  bloc: ^8.1.2
+  equatable: ^2.0.3
+  flutter_bloc: ^8.1.2
 
 dev_dependencies:
   flutter_test:

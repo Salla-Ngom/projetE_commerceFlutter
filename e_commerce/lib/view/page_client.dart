@@ -1,14 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:e_commerce/services/services_clients/client_bloc.dart';
 import 'package:e_commerce/view/connexion/login.dart';
 import 'package:e_commerce/view/product.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'page_notification.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../services/services_produits/product_event.dart';
+import '../services/services_produits/product_state.dart';
 import 'profil.dart';
 import 'panier.dart';
-import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 
 class ClientPage extends StatefulWidget {
   final String id;
@@ -39,17 +41,17 @@ class _ClientPageState extends State<ClientPage> {
   void initState() {
     super.initState();
     _pages = [
-      ClientHomePage(userId: widget.id),
-      CommandePageC(userId: widget.id), 
-      NotificationPage(), 
+      ClientHomePage(userIdC: widget.id),
+      CommandePageC(userId: widget.id),
+      NotificationPage(),
       ProfilPage(
-        id: widget.id, 
-        nom: widget.nom, 
-        prenom: widget.prenom, 
-        email: widget.email, 
-        telephone: widget.telephone, 
-        adresse: widget.adresse, 
-      ), 
+        id: widget.id,
+        nom: widget.nom,
+        prenom: widget.prenom,
+        email: widget.email,
+        telephone: widget.telephone,
+        adresse: widget.adresse,
+      ),
     ];
   }
 
@@ -81,22 +83,18 @@ class _ClientPageState extends State<ClientPage> {
               leading: const Icon(Icons.person),
               title: const Text('Mon profil'),
               onTap: () {
-                Navigator.pop(context); 
+                Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => ProfilPage(
                             id: widget.id,
-                            nom: widget.nom, 
-                            prenom: widget
-                                .prenom,
-                            email:
-                                widget.email,
-                            telephone: widget
-                                .telephone, 
-                            adresse: widget
-                                .adresse, 
-                          )), 
+                            nom: widget.nom,
+                            prenom: widget.prenom,
+                            email: widget.email,
+                            telephone: widget.telephone,
+                            adresse: widget.adresse,
+                          )),
                 );
               },
             ),
@@ -104,8 +102,8 @@ class _ClientPageState extends State<ClientPage> {
               leading: const Icon(Icons.logout),
               title: const Text('Déconnexion'),
               onTap: () {
-                Navigator.pop(context); 
-                _deconnecterUtilisateur(); 
+                Navigator.pop(context);
+                _deconnecterUtilisateur();
               },
             ),
           ],
@@ -116,9 +114,8 @@ class _ClientPageState extends State<ClientPage> {
 
   @override
   Widget build(BuildContext context) {
-    String firstLetterOfNom = widget.nom.isNotEmpty
-        ? widget.nom[0].toUpperCase()
-        : ''; 
+    String firstLetterOfNom =
+        widget.nom.isNotEmpty ? widget.nom[0].toUpperCase() : '';
     String firstLetterOfPrenom =
         widget.prenom.isNotEmpty ? widget.prenom[0].toUpperCase() : '';
     return Scaffold(
@@ -128,33 +125,35 @@ class _ClientPageState extends State<ClientPage> {
             CircleAvatar(
               backgroundColor: Colors.blue,
               child: Text(
-                '$firstLetterOfPrenom$firstLetterOfNom', 
+                '$firstLetterOfPrenom$firstLetterOfNom',
                 style: TextStyle(color: Colors.white),
               ),
             ),
             const SizedBox(width: 10),
-             Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.prenom, 
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 7,),
-              Text(
-                widget.nom,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ],
-             ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.prenom,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(
+                  width: 7,
+                ),
+                Text(
+                  widget.nom,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: () {
-              
-            },
+            onPressed: () {},
           ),
           IconButton(
             icon: const Icon(Icons.shopping_cart),
@@ -162,7 +161,8 @@ class _ClientPageState extends State<ClientPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => PanierPage(userId: widget.id,adresse: widget.adresse)),
+                    builder: (context) =>
+                        PanierPage(userId: widget.id, adresse: widget.adresse)),
               );
             },
           ),
@@ -174,7 +174,7 @@ class _ClientPageState extends State<ClientPage> {
           ),
         ],
       ),
-      body: _pages[_currentIndex], 
+      body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -208,141 +208,74 @@ class _ClientPageState extends State<ClientPage> {
   }
 }
 
-
 class ClientHomePage extends StatelessWidget {
-  final String userId; 
+  final String userIdC;
 
-  const ClientHomePage({super.key, required this.userId}); 
+  const ClientHomePage({super.key, required this.userIdC});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Produits disponibles'),
-      ),
-      body: FutureBuilder<List<Product>>(
-        future: fetchProducts(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Erreur : ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Aucun produit disponible.'));
-          } else {
-            List<Product> products = snapshot.data!;
+    return BlocProvider(
+      create: (context) => ClientBloc()..add(ProductLoadRequested()),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Produits disponibles'),
+        ),
+        body: BlocBuilder<ClientBloc, ProductState>(
+          builder: (context, state) {
+            if (state is ProductLoading) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (state is ProductError) {
+              return Center(child: Text('Erreur : ${state.message}'));
+            } else if (state is ProductLoaded || state is ProductAddedToCart) {
+              List<Product> products = state is ProductLoaded
+                  ? state.products
+                  : (state as ProductAddedToCart).products;
 
-            return ListView.builder(
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                Product product = products[index];
+              return ListView.builder(
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  Product product = products[index];
 
-                return Card(
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                  child: ListTile(
-                    leading: product.imageUrl.isNotEmpty
-                        ? Image.network(
-                            product.imageUrl,
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                          )
-                        : const Icon(Icons.image_not_supported, size: 50),
-                    title: Text(product.title),
-                    subtitle:
-                        Text('Prix : \$${product.price.toStringAsFixed(2)}'),
-                    trailing: ElevatedButton(
-                      onPressed: () async {
-                        final CollectionReference paniers =
-                            FirebaseFirestore.instance.collection('paniers');
-
-                        try {
-                          DocumentSnapshot panierSnapshot =
-                              await paniers.doc(userId).get();
-
-                          if (panierSnapshot.exists) {
-                            Map<String, dynamic> panierData =
-                                panierSnapshot.data() as Map<String, dynamic>;
-                            List produits = panierData['produits'] ?? [];
-                            int indexProduit = produits.indexWhere(
-                                (produit) => produit['id'] == product.id);
-                            if (indexProduit != -1) {
-                              produits[indexProduit]['quantite'] += 1;
-                            } else {
-                              produits.add({
-                                'id': product.id,
-                                'nom': product.title,
-                                'prix': product.price * 500,
-                                'quantite': 1,
-                                'image': product.imageUrl,
-                              });
-                            }
-                            double montantTotal = 0;
-                            for (var produit in produits) {
-                              montantTotal +=
-                                  produit['prix'] * produit['quantite'];
-                            }
-                            await paniers.doc(userId).update({
-                              'produits': produits,
-                              'total':
-                                  montantTotal, 
-                            });
-                          } else {
-                            await paniers.doc(userId).set({
-                              'produits': [
-                                {
-                                  'id': product.id,
-                                  'nom': product.title,
-                                  'prix': product.price * 500,
-                                  'quantite': 1,
-                                }
-                              ],
-                              'total': product.price *
-                                  500,
-                              'date': Timestamp.now(),
-                            });
-                          }
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      '${product.title} ajouté au panier')),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Erreur lors de l\'ajout au panier : $e')),
-                            );
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green),
-                      child: const Text('Ajouter'),
+                  return Card(
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                    child: ListTile(
+                      leading: product.imageUrl.isNotEmpty
+                          ? Image.network(
+                              product.imageUrl,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            )
+                          : const Icon(Icons.image_not_supported, size: 50),
+                      title: Text(product.title),
+                      subtitle:
+                          Text('Prix : \$${product.price.toStringAsFixed(2)}'),
+                      trailing: ElevatedButton(
+                        onPressed: () {
+                          context.read<ClientBloc>().add(AddToCartRequested(
+                                product: product,
+                                userId: userIdC,
+                              ));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color.fromARGB(255, 27, 161, 27),
+                        ),
+                        child: const Text('Ajouter'),
+                      ),
                     ),
-                  ),
-                );
-              },
-            );
-          }
-        },
+                  );
+                },
+              );
+            }
+
+            return const Center(child: Text('Aucun produit disponible.'));
+          },
+        ),
       ),
     );
-  }
-  Future<List<Product>> fetchProducts() async {
-    final response =
-        await http.get(Uri.parse('https://fakestoreapi.com/products'));
-
-    if (response.statusCode == 200) {
-      List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Product.fromJson(json)).toList();
-    } else {
-      throw Exception('Échec de la récupération des produits');
-    }
   }
 }
 
@@ -353,7 +286,8 @@ class CommandePageC extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    CollectionReference commandes = FirebaseFirestore.instance.collection('commandes');
+    CollectionReference commandes =
+        FirebaseFirestore.instance.collection('commandes');
 
     return Scaffold(
       appBar: AppBar(
@@ -361,7 +295,10 @@ class CommandePageC extends StatelessWidget {
         backgroundColor: Colors.blueAccent,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: commandes.where('userId', isEqualTo: userId).orderBy('date', descending: true).snapshots(),
+        stream: commandes
+            .where('userId', isEqualTo: userId)
+            .orderBy('date', descending: true)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -397,7 +334,7 @@ class CommandePageC extends StatelessWidget {
                       Text('Date : $formattedDate'),
                       Text('Total : $total FCFA'),
                       Text('Adresse : $adresse'),
-                       Text('Livraison : $livree'),
+                      Text('Livraison : $livree'),
                     ],
                   ),
                   trailing: const Icon(Icons.arrow_forward, color: Colors.blue),
@@ -405,7 +342,8 @@ class CommandePageC extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => CommandeDetailPageC(commandeId: commande.id),
+                        builder: (context) =>
+                            CommandeDetailPageC(commandeId: commande.id),
                       ),
                     );
                   },
@@ -419,7 +357,6 @@ class CommandePageC extends StatelessWidget {
   }
 }
 
-
 class CommandeDetailPageC extends StatelessWidget {
   final String commandeId;
 
@@ -427,7 +364,8 @@ class CommandeDetailPageC extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    CollectionReference commandes = FirebaseFirestore.instance.collection('commandes');
+    CollectionReference commandes =
+        FirebaseFirestore.instance.collection('commandes');
 
     return Scaffold(
       appBar: AppBar(
@@ -451,14 +389,16 @@ class CommandeDetailPageC extends StatelessWidget {
 
           // Récupération des données de la commande
           var commande = snapshot.data!;
-          var commandeData = commande.data() as Map<String, dynamic>; // Cast des données
-          var produits = List<Map<String, dynamic>>.from(commandeData['produits']);
+          var commandeData =
+              commande.data() as Map<String, dynamic>; // Cast des données
+          var produits =
+              List<Map<String, dynamic>>.from(commandeData['produits']);
           var total = commandeData['total'];
           var adresse = commandeData['adresse'];
           var date = (commandeData['date'] as Timestamp).toDate();
           var livraison = commandeData['livraison'];
-          var dateLivraison = commandeData.containsKey('dateLivraison') 
-              ? (commandeData['dateLivraison'] as Timestamp).toDate() 
+          var dateLivraison = commandeData.containsKey('dateLivraison')
+              ? (commandeData['dateLivraison'] as Timestamp).toDate()
               : null;
 
           return SingleChildScrollView(
@@ -469,14 +409,19 @@ class CommandeDetailPageC extends StatelessWidget {
                 children: [
                   Text(
                     'Commande passée le ${date.toString()}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
                   Text('Adresse de livraison : $adresse'),
                   const SizedBox(height: 10),
-                  Text('Total : ${total.toString()} FCFA', style: const TextStyle(color: Colors.green, fontSize: 18)),
+                  Text('Total : ${total.toString()} FCFA',
+                      style:
+                          const TextStyle(color: Colors.green, fontSize: 18)),
                   const Divider(height: 30, thickness: 1),
-                  const Text('Produits :', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('Produits :',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   ListView.builder(
                     shrinkWrap: true,
@@ -505,10 +450,13 @@ class CommandeDetailPageC extends StatelessWidget {
                     },
                   ),
                   const Divider(height: 30, thickness: 1),
-                  const Text('Statut de livraison :', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('Statut de livraison :',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   Text('Livraison : $livraison'),
-                  if (dateLivraison != null) Text('Date de livraison : ${dateLivraison.toString()}'),
+                  if (dateLivraison != null)
+                    Text('Date de livraison : ${dateLivraison.toString()}'),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -519,4 +467,3 @@ class CommandeDetailPageC extends StatelessWidget {
     );
   }
 }
-
